@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "A simple front-end base project using gulp.js.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "gulp serve",
+    "build": "gulp build"
   },
   "repository": {
     "type": "git",
@@ -25,5 +26,8 @@
   "bugs": {
     "url": "https://github.com/victalbrecht/gulp-base-project/issues"
   },
-  "homepage": "https://github.com/victalbrecht/gulp-base-project#readme"
+  "homepage": "https://github.com/victalbrecht/gulp-base-project#readme",
+  "devDependencies": {
+    "gulp": "^4.0.2"
+  }
 }

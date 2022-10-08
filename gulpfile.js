@@ -18,23 +18,6 @@ const scriptsDir = "/scripts/*.ts";
 let hashedJS;
 let hashedCSS;
 
-const startWebServer = () =>
-  gulp.src(sourceDir).pipe(
-    webserver({
-      port: 666,
-      livereload: true,
-      open: "http://localhost:666/",
-    })
-  );
-
-const watchTypeScript = () =>
-  gulp.watch(`${sourceDir}/${scriptsDir}`, transpileTypeScript);
-
-const watchSASS = () =>
-  gulp.watch(`${sourceDir}/${stylesDir}`, transpileAndMinifySASS);
-
-exports.serve = gulp.parallel(startWebServer, watchTypeScript, watchSASS);
-
 const clearBuild = () => del(distDir);
 
 const transpileAndMinifyTypeScript = () =>
@@ -81,6 +64,23 @@ const replaceHTMLImports = () =>
       })
     )
     .pipe(gulp.dest(distDir));
+
+const startWebServer = () =>
+  gulp.src(sourceDir).pipe(
+    webserver({
+      port: 666,
+      livereload: true,
+      open: "http://localhost:666/",
+    })
+  );
+
+const watchTypeScript = () =>
+  gulp.watch(`${sourceDir}/${scriptsDir}`, transpileAndMinifyTypeScript);
+
+const watchSASS = () =>
+  gulp.watch(`${sourceDir}/${stylesDir}`, transpileAndMinifySASS);
+
+exports.serve = gulp.parallel(startWebServer, watchTypeScript, watchSASS);
 
 exports.build = gulp.series(
   clearBuild,

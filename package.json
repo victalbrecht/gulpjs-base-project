@@ -1,6 +1,6 @@
 {
-  "homepage": "http://victalbrecht.github.io/lol-client-login",
-  "name": "lol-client-login",
+  "homepage": "http://victalbrecht.github.io/gulpjs-base-project",
+  "name": "gulpjs-base-project",
   "version": "1.0.0",
   "description": "A simple front-end base project using gulp.js",
   "scripts": {

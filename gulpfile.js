@@ -1,105 +1,113 @@
 const gulp = require("gulp");
-const hash = require("gulp-hash");
 const rename = require("gulp-rename");
 const webserver = require("gulp-webserver");
 const ts = require("gulp-typescript");
-const tsProject = ts.createProject("tsconfig.json");
 const sass = require("gulp-sass")(require("sass"));
 const minify = require("gulp-minify");
-const htmlreplace = require("gulp-html-replace");
 const del = require("del");
+const replace = require("gulp-replace");
+const concat = require("gulp-concat");
+
+const sourceDir = "src";
+const distDir = "build";
 
 const productionBuild = process.argv[2] === "build";
 
-const sourceDir = "src";
-const distDir = "dist";
-
-const stylesSourceDir = "styles/scss/*.scss";
-const scriptsSourceDir = "scripts/ts/*.ts";
-const stylesTargetDir = productionBuild ? distDir : `${sourceDir}/styles/css`;
-const scriptsTargetDir = productionBuild ? distDir : `${sourceDir}/scripts/js`;
-
-let jsFileName = "";
-let cssFileName = "";
-
-const transpileAndMinifyTypeScript = () => {
-  const file = tsProject
-    .src()
-    .pipe(tsProject())
-    .js.pipe(
+const transpileAndMinifyTypeScript = () =>
+  gulp
+    .src("src/scripts/ts/**/*.ts")
+    .pipe(
+      ts({
+        noImplicitAny: true,
+        lib: [
+          "DOM",
+          "ES2015.Core",
+          "DOM.Iterable",
+          "ES2015.Collection",
+          "ES2015.Iterable",
+          "ES2015",
+        ],
+        target: "es5",
+      })
+    )
+    .pipe(
       minify({
         ext: {
           min: ".js",
         },
         noSource: true,
       })
-    );
-
-  const hashHandler = productionBuild ? file.pipe(hash()) : file;
-
-  return hashHandler
+    )
     .pipe(
       rename((path) => {
         path.basename += ".min";
-        jsFileName = `${path.basename}.js`;
       })
     )
-    .pipe(gulp.dest(scriptsTargetDir));
-};
+    .pipe(concat('main.min.js'))
+    .pipe(gulp.dest(productionBuild ? distDir : `${sourceDir}/scripts/js`));
 
 const transpileAndMinifySASS = () => {
-  const file = gulp
-    .src(`${sourceDir}/${stylesSourceDir}`)
+  let transpiledSASS = gulp
+    .src("src/styles/scss/main.scss")
     .pipe(sass.sync({ outputStyle: "compressed" }));
 
-  const hashHandler = productionBuild ? file.pipe(hash()) : file;
+  transpiledSASS = productionBuild
+    ? transpiledSASS.pipe(replace("../", ""))
+    : transpiledSASS;
 
-  return hashHandler
+  return transpiledSASS
     .pipe(
       rename((path) => {
         path.basename += ".min";
-        cssFileName = `${path.basename}.css`;
       })
     )
-    .pipe(gulp.dest(stylesTargetDir));
+    .pipe(gulp.dest(productionBuild ? distDir : `${sourceDir}/styles/css`));
 };
 
 const watchTypeScript = () =>
-  gulp.watch(`${sourceDir}/${scriptsSourceDir}`, transpileAndMinifyTypeScript);
+  gulp.watch(`${sourceDir}/scripts/ts/**/*.ts`, transpileAndMinifyTypeScript);
 
 const watchSASS = () =>
-  gulp.watch(`${sourceDir}/${stylesSourceDir}`, transpileAndMinifySASS);
+  gulp.watch(`${sourceDir}/styles/scss/**/*.scss`, transpileAndMinifySASS);
 
-const clearBuild = () => del(distDir);
+const clearDist = () => del(distDir);
 
-const replaceHTMLImports = () =>
-  gulp
+const handleAssets = () =>
+  gulp.src(`${sourceDir}/assets/**/*`).pipe(gulp.dest(`${distDir}/assets`));
+
+const replaceAndHashHTMLResources = () => {
+  const hash = (Math.random() + 1).toString(18).substring(2);
+  const filesTypesToHash = ['css', 'js', 'ico', 'png', 'mp4'];
+  const replaceRegExp = new RegExp(`(src|href)(=".+\.)(${filesTypesToHash.join('|')})(")`, 'gi');
+
+  return gulp
     .src(`${sourceDir}/index.html`)
-    .pipe(
-      htmlreplace({
-        css: cssFileName,
-        js: {
-          src: jsFileName,
-          tpl: '<script src="%s" defer></script>'
-        }
-      })
-    )
+    .pipe(replace(replaceRegExp, `$1$2$3?v=${hash}$4`))
     .pipe(gulp.dest(distDir));
+};
 
 const startWebServer = () =>
   gulp.src(sourceDir).pipe(
     webserver({
-      port: 666,
+      host: "localhost",
+      port: 80,
       livereload: true,
-      open: "http://localhost:666/",
+      open: "http://localhost/",
     })
   );
 
-exports.serve = gulp.parallel(startWebServer, watchTypeScript, watchSASS);
-
-exports.build = gulp.series(
-  clearBuild,
+exports.serve = gulp.parallel(
   transpileAndMinifyTypeScript,
   transpileAndMinifySASS,
-  replaceHTMLImports
+  watchTypeScript,
+  watchSASS,
+  startWebServer
+);
+
+exports.build = gulp.series(
+  clearDist,
+  transpileAndMinifyTypeScript,
+  transpileAndMinifySASS,
+  replaceAndHashHTMLResources,
+  handleAssets
 );
